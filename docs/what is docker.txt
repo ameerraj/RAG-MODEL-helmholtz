@@ -1,0 +1,121 @@
+What is Docker?
+One of the key challenges in modern research is how to achieve reproducibility. Interestingly, this is also a big interest for software development. If I write some code, it should work on my machine (I mean, I hope it does!) but how do I guarantee that it will work on anyone else’s? Similarly, when writing code to analyse data, it is important that it produces the correct result, not just when you run the code multiple times with the same input data, but also when someone else runs the code on a different computer.
+
+A comic showing a confusing network of interlinking Python environments. The subtitle reads "My Python environment has become so degraded that my laptop has been declared a superfund site.The complexity of Python environments, as explained by XKCD (Comic by Randall Munroe – CC BY-NC 2.5)
+One of the common ways that software developers have traditionally tried to solve this problem is using virtual machines (or VMs). The idea is that on your computer, you’ve probably got different versions of dependencies that will all interact in different messy ways, not to mention the complexity of packaging in languages like Python and C. However, if you have a VM, you can standardise things a bit more easily. You can specify which packages are installed, and what versions, and what operating system everything is running on in the first place. Everyone in your group can reproduce each other’s work, because you’re all running it in the same place.
+
+The problem occurs when a reviewer comes along, who probably won’t have access to your specific VM. You either need to give them the exact instructions about how to setup your VM correctly (and can you remember the precise instructions you used then, and what versions all your dependencies were at?) or you need to copy the whole operating system (and all of the files in it) out of your VM, into a new VM for the reviewer.
+
+Docker is both of those solutions at the same time.
+
+Docker thinks of a computer as an image, which is a bundle of layers. The bottom layer is a computer with almost nothing on it1. The top layer is a computer with an operating system, all your dependencies, and your code, compiled and ready to run. All the layers between those two points are the individual steps that you need to perform to get your computer in the right state to run your code. Each step defines the changes between it and the next layer, with each of these steps being written down in a file called a Dockerfile. Moreover, once all of these layers have been built on one computer, they can be shared with other people, meaning that you can always share your exact setup with anyone else who needs to run and review the code.
+
+When these layers are bundled together, we call that an image. Finally, to run the image, Docker transforms it into a container, and runs that container as if it were running inside a virtual machine2.
+
+Setting Up Docker
+Setting up Docker will look different between different operating systems. This is to cover certain cross-platform issues. Basically, as a general rule, in any given operating system, it’s only possible to run containers that also use that same operating system. (Linux on Linux, Windows on Windows, etc.)3 Obviously this is very impractical, given that most pre-built and base layers available for Docker are built for Linux. As a result, for Windows and MacOS, Docker provides a tool called Docker Desktop, which includes a virtual machine to basically paper over the differences between Linux and the host operating system4. It also provides a number of other tools for more advanced Docker usage that we won’t go into now.
+
+For Linux, you will need to install “Docker Engine” – this is essentially just the core part of Docker that runs containers.
+
+The installation instructions for Mac, Windows, and Linux are available at the Get Docker page – if you want to follow along with the rest of these commands, feel free to complete those installation instructions, and then come back here.
+
+N.B. On most Linux distributions, you will need to also follow the post-installation steps (linked at the bottom of the installation page and here) in order to run the docker command without sudo as a non-root user. If you’re getting errors about invalid permissions when running any of the following commands, this is probably the issue you are facing.
+
+Running Our First Docker Container
+The first step with any new programming language is the “Hello World” program – what does “Hello World” look like on Docker?
+
+$ docker run hello-world
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+0e03bdcc26d7: Pull complete
+Digest: sha256:7f0a9f93b4aa3022c3a4c147a449bf11e0941a1fd0bf4a8e6c9408b2600777c5
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+-text snipped for convenience-
+The first thing we get when we run this docker command is a series of messages about what Docker is doing to run the hello-world container.
+
+First, Docker tries (and fails) to search the computer that it’s running on for an already cached copy of a container called hello-world:latest. The :latest part is called the tag, and roughly corresponds to the version of the relevant software that is installed on this container. When no tag is specified, Docker defaults to “latest”, which is usually the most recent build of a container.
+Because it can’t find the image, it “pulls” the image from an external repository – in this case, Docker Hub. The hello-world container is actually part of the “standard library” of official Docker images, which is where the library/ part comes from. Normally, if we were to host our own images on Docker Hub, we’d need to include a user or organisation namespace (e.g. helmholtz/...).
+The line beginning with a set of random numbers and digits means that Docker is downloading a layer. (The numbers and digits are an identifier for the file being downloaded.) On slower computers, you might see a loading bar appear here while the actual download takes place.
+The next two lines (“Digest” and “Status”) are simply updates to say that everything has been downloaded and that Docker is ready to run the image. The digest is a unique identifier for this exact image which will never be updated, which can be useful if you want to be completely certain that you’ll never accidentally update something.
+Finally, a message is printed (this is the “Hello from Docker!” section). This explains a bit about what has just happened, and confirms that everything was successful.
+Running Our Second Docker Container
+The “Hello World” operation runs, but it doesn’t actually do much useful – let’s try running something more interesting and useful. Part of our original motivation for this exercise was managing the chaos of different ways of installing Python and its dependencies, so let’s see if we can get a container up and running with Python.
+
+The first step is generally to find a Python base image. Thankfully, as part of the set of officially maintained images, Docker provides some Python images for us to use. This includes images for different versions of Python. Whereas last time, we used the default latest tag, this time we can try explicitly using the 3.8.5 tag to set the Python version.
+
+However, if we try running this, we’ll run into a bit of an issue:
+
+$ docker run python:3.8.5
+Unable to find image 'python:3.8.5' locally
+3.8.5: Pulling from library/python
+d6ff36c9ec48: Pull complete 
+c958d65b3090: Pull complete 
+edaf0a6b092f: Pull complete 
+80931cf68816: Pull complete 
+7dc5581457b1: Pull complete 
+87013dc371d5: Pull complete 
+dbb5b2d86fe3: Pull complete 
+4cb6f1e38c2d: Pull complete 
+c2df8846f270: Pull complete 
+Digest: sha256:bc765f71aaa90648de6cfa356ec201d50549031a244f48f8f477f386517c5d1b
+Status: Downloaded newer image for python:3.8.5
+$
+If you run this, you’ll immediately see that there are a lot more layers that need to be downloaded and extracted – this makes sense, as Python is a much more complicated piece of software than just print a “Hello World” message! You’ll also see that instead of latest, the tag is 3.8.5, so we can be sure what version we are using.
+
+However, when we ran this image, the docker command immediately exited, and we’re back to where we started. We’ve downloaded something – but what does that something actually do?
+
+By default, when Docker runs a container, it just prints the output of that container – it doesn’t send any user input into that container. However, the default Python command is a REPL – it require some sort of input to do something with. To allow us to send terminal input in and out, we can use the -it flags, like this:
+
+$ docker run -it python:3.8.5
+Python 3.8.5 (default, Sep  1 2020, 18:44:24)
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> 
+That looks better! Feel free to play around and convince yourself that this is a working, standard Python installation. Pressing Ctrl+D will exit the terminal and close the container. It’s worth noting that the second time we ran this command, there was no information about pulling layers or downloading images. This is because Docker caches this sort of information locally.
+
+Running Our Second Docker Container (Again!)
+All Docker containers have a command that runs as the main process in that container. With the “Hello World” container, that command was a small binary that prints out a welcome message. With Python, the command was the standard python executable. What if we want to run a different command in the same container? For example, say we have a Python container, and we’re using the Python interpreter. Is there a way that we can open a shell on that container so that we can run commands like pip to install dependencies?
+
+The first thing we need to do is deal with a problem that we’re about to run into. When the main process in a container exits (the “Hello World” command has printed all it needs to print, or the Python interpreter has been exited) the whole container is closed. This is mostly useful (when the main process exits, we probably don’t need the container any more) but it does mean that we need to think a bit about how we’re going to interact with the running container.
+
+Firstly, let’s create a new container, but give it a special name (here my-python-container).
+
+$ docker run --name my-python-container -it python:3.8.5
+Python 3.8.5 (default, Sep  1 2020, 18:44:24)
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> 
+Now, opening a second terminal (and not closing the Python process in the first terminal), we can use the docker exec command to run a second command inside the same container, as long as we know the name. In this case, we can use bash as the second command, and from there we can pip install whatever we want.
+
+$ docker exec my-python-container bash
+root@f30676215731:/# pip install numpy
+Pressing Ctrl-D in this second terminal will close bash and bring us out of this new container.
+
+We could also have directly run docker exec my-python-container pip install numpy – in this case, because we only wanted to run one command inside the container, it would have had the same effect. However, opening up a bash terminal inside the container is a very useful ability, because it’s then possible to root around inside the container and examine what’s going on – often helpful for debugging!
+
+Next: Part 2 – A Dockerfile Walkthrough
+In this post, I explained a bit about how Docker works, and how to use Docker to run Python (and many other tools!) in an isolated environment on your computer. All the images that we used in this post were created by others and hosted on Docker Hub.
+
+In the next post, I’m going to explain how to create your own image, containing your own application code, by going line-by-line through an example Dockerfile. By creating an image in this way, we can clearly define the instructions needed to setup, install, and run our code, making our development process much more reproducible.
+
+View part two here.
+
+
+
+ Get In Touch
+HIFIS offers free-of-charge workshops and consulting to research groups within the Helmholtz umbrella. If you work for a Helmholtz-affiliated institution, and think that this would be useful to you, send us an e-mail at support@hifis.net, or fill in our consultation request form.
+
+Footnotes
+This is a bit of a simplification. The canonical base image (“scratch”) is a zero-byte empty layer, but, if you were able to explore inside it, you’d find that there is still enough of an operating system for things like files to exist, and to run certain programs. This is because Docker images aren’t separate virtual machines – the operating system that you can see is actually the operating system of the computer that’s running Docker. This is a concept called containerisation or OS-level Virtualisation, and how it works is very much beyond the scope of this blog post! ↩
+
+The differences between layers, images, and containers is not always obvious, and I had to look it up a lot while writing this post. Most of the time, it’s possible to think of layers and images being the same thing, and containers being the way that you run the final layer. However, this isn’t technically accurate, and can cause some confusion when exploring container IDs, image IDs, and layer IDs. If you want to explore this more, I recommend reading Sofija Simic’s post here, followed by Nigel Brown’s post here.
+
+Please remember that none of the above information is necessary to truly use and understand Docker – the main reason that I ran into these questions was when trying to get a completely solid understanding of what different IDs referred to while writing this post. Most of the time, these specifics are completely transparent to the user. ↩
+
+Why? As I mentioned in the previous footnote, containerisation isn’t about creating new virtual machines – it’s about running a mostly-sandboxed version of an operating system inside the parent operating system (this is the containerisation concept). Because it’s still running inside the same operating system as before, you can’t switch between Linux and Windows. ↩
+
+Note that you can also use Windows Subsystem for Linux (WSL) instead of a “true” virtual machine. ↩

@@ -1,0 +1,3 @@
+nheritance
+Generally speaking…¶
+Let’s imagine that for a DnaSequencer the sequence length is tied to the model of sequencer we are using. Also of course all sequencers of the same model have the same name for the model and consequently provide the same sequence length. We could say that all sequencers of a specific model are a special case of DNA sequencers in general. Such specializations ca

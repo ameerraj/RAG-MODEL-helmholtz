@@ -1,0 +1,232 @@
+A more generalized approach¶
+We obviously need a better way to model more complex data. For that purpose we introduce the idea of an object. An object represents an amount of data and logic that belongs together in the context of a program. In our example each collected sample could be represented by an object:
+
+
+
+In the last episode we have seen, that each of these samples has the same kind of information attached to it, so we can describe what a sample in general looks like: We can summarize these common features as: “Every sample has an identifier and a collector”.
+
+This abstraction is called a class. The “variables” that each object of the same class has are called attributes. In our case these are identifier and collector.
+
+
+
+An object that is of a certain class is called an instance of that class. Instantiation thus is the process of creating a new object from a class. All objects of a certain class will have the same attributes, but may have different values for each of the attributes; they might even be None.
+
+Let us see how to write this down in Python, step-by-step:
+
+We use the class keyword to define a new class:
+
+# Here is the most minimal class
+class Sample:
+    pass  # Tell Python that this is all (for now)
+
+my_sample = Sample()  # Create a new instance of Sample
+But this minimal class does not contain any attributes. To add attributes to the class, we explicitly have to define a function which creates the attributes for the instance.
+
+
+Class
+Dictionary
+class Sample:
+
+    # Tell python how to construct an object of that class
+    def __init__(self, identifier, collector):
+        self.identifier = identifier
+        self.collector = collector
+
+my_sample = Sample("0123", "Darwin")
+
+You will notice that this is generally very similar to how we created the dictionary, but also that there are some key differences. Instead of defining a function outside the data structure as with initialize_sample we defining an __init__ “function” inside this class. “Functions” inside the class are called methods. The __init__ method is called the constructor of the object, since it constructs the attributes of the class. Also, we are using the method parameter self to define and assign attributes to the object instead of the dictionary definition. We will later see that the self parameter always refers to the current object the method is working with.
+
+The “dot” notation we used in the constructor to define the attributes can also be used to access and modify attributes of the object:
+
+
+Class
+Dictionary
+my_sample = Sample("0123", "Darwin")
+my_sample.collector = "Irwin"
+
+print("Object:", my_sample)
+print("ID:", my_sample.identifier)
+print("Collected by:", my_sample.collector)
+
+Note how the output of printing an object directly is pretty awkward. Remember how we solved that problem in our last approach, but we will learn how to improve that later with classes.
+
+There is one further important insight: Classes are data types. Try:
+
+
+Code
+Output
+my_sample = Sample("0123", "Darwin")
+print(type(my_sample))
+
+This means that you can use any object as a value for variables or put them into a function as values for parameters. If we look at the type of other data types:
+
+
+Code
+Output
+print(type(1.0))
+print(type([1.0]))
+print("Hello")
+
+we will notice, that also all other data types in Python are classes.
+
+
+Methods
+A Method to the Madness¶
+For now let us focus on how to extend our new class with a bit of functionality. To do so we will define something that reminds us of functions. In the context of OOP this is called a method. Usually, a method needs to refer to a particular object which it operates on. In Python this object is passed in as the first parameter, called self. This parameter will be filled in automatically by Python if you call the method via the .-operator, hence you do not need to to pass self into the method even though it is part of the list of parameters in the method signature. Let’s take a look at another example:
+
+class Sample:
+
+    # !!! Mind the indentation !!!
+    def print_me(self):
+        print("I am", self, "of type", type(self))
+
+
+# Create some new Sample instances
+my_sample = Sample()
+my_other_sample = Sample()
+
+print("--- Printing my_sample ---")
+my_sample.print_me()
+# Note that Python fills in the "self" automatically
+# In the above line, "self" will be the "my_sample"-object
+
+print("--- Printing my_other_sample ---")
+my_other_sample.print_me()
+# Here, "self" will be "my_other_sample"
+The output of print_me() is not very nice or helpful at all. If you want to pretty-print an object you will have to implement a special method called __str__().
+
+Fine Print¶
+Now we have the most essential components to build ourselves a first useful version of a Sample class.
+
+class Sample:
+
+    # This is the constructor
+    def __init__(self, identifier, collector):
+        self.identifier = identifier
+        self.collector = collector
+
+    # This will help us with printing the instances in a nice fashion
+    def __str__(self):
+        return "Sample: " + self.identifier + ", collected by " + self.collector
+
+
+# Lets try that out
+sample = Sample(identifier="0123", collector="Darwin")
+
+# This is possible since we implemented the __str__-method
+print(sample)
+Rules for __str__:¶
+The method signature is __str__(self).
+It must return a string.
+The method will be called by print(…) to figure out how to display an object on the command line.
+
+We now need to combine this new class with our Sample. In a picture, the current situation looks something like this:
+
+
+
+We have two classes that are lying around without any relation to each other. What we want to achieve is that the Location class represents a location in which a sample was found. This can be achieved by introducing a new attribute found_at into the Sample class which will be given as a Location-instance when creating a new Sample. Such a way of combining classes is called composition.
+
+# If you put the "Location"-class into in its own file,
+# make sure to import it before use
+
+class Sample:
+
+    def __init__(self, identifier, collector, found_at):
+        …  # All the other attributes
+        self.found_at = found_at
+
+    …  # Everything else as before
+
+# Let's try to use this
+
+galapagos = Location(latitude=-0.777259, longitude=-91.142578)
+my_sample = Sample(identifier="0123", collector="Darwin", found_at=galapagos)
+
+# When composing a model of multiple classes, you can chain the "."-operator
+print(my_sample.found_at.latitude)
+print(my_sample.found_at.longitude)
+This is how it would look like in a diagram:
+
+
+
+We read this as: a Sample is composed of a Location via the found_at attribute.
+
+For future convenience, we have put the Location-class into its own file, called location.py.
+
+If we want to use attributes or methods of the Location-class in our Sample-class, we have to add
+
+from location import Location
+before the definition of the Sample-class.
+Info
+
+A benefit of putting classes into their own files is to keep programs organized and split them into dedicated pieces that can be easier handled on their own. In technical terms we talk about concerns and responsibilities: A class of type DnaSequencer should not include concerns and responsibilities of a class representing a Location. This means, that for example handling of the coordinates has nothing to do with sequencers and, the other way around, analysing DNA has nothing to do with the location where a sample was taken. In general we want to achieve a so-called Separation of Concerns and make each class adhere to the paradigma of having a single responsibility.
+
+Let’s assume we also want to provide a few default locations for easier use. Our file could now look something like this:
+
+class Location:
+    … # As before
+
+# A few default locations that we often visit
+# Notice that we indicate them to be constants by naming them in UPPER_CASE
+DRESDEN = Location(latitude=51.05089, longitude=13.73832)
+GALAPAGOS = Location(latitude=-0.777259, longitude=-91.142578)
+NORTH_POLE = Location(latitude=90, longitude=0)
+NAURU = Location(latitude=-0.5284144, longitude=166.9342384)
+By defining these constants, we can now refer to location.DRESDEN in our code, which is a lot easier than repeating the coordinates all over or defining them each time we need them.
+
+nheritance
+Generally speaking…¶
+Let’s imagine that for a DnaSequencer the sequence length is tied to the model of sequencer we are using. Also of course all sequencers of the same model have the same name for the model and consequently provide the same sequence length. We could say that all sequencers of a specific model are a special case of DNA sequencers in general. Such specializations can be modelled in OOP via a relationship called inheritance.
+
+
+
+The key idea is that a specific model of DNA sequencer inherits all general attributes and methods from its more generic parent class and only needs to add its own specific attributes and methods.
+
+In Python, the parent class is provided in parenthesis after the class name.
+
+# Make sure the class DnaSequencer is either in the same file
+# Or available via import
+
+class DnaMaster2000(DnaSequencer):
+    MODEL = "DNA Master 2000"
+Our new DnaMaster2000 actually does things a bit differently. While the analysis behaves as usual, it always prints its model and serial number before each run and a summary afterwards. This specialization of behaviour incorporates two further concepts:
+
+Overriding, where a method from a super-class is replaced by an implementation of a sub-class.
+Calling members of the super-class with the super-keyword.
+class DnaMaster2000(DnaSequencer):
+    MODEL = …  # as before
+
+    def analyze_sample(self, sample):  # Provide our own implementation
+        print(self.MODEL, "- S/N", self.serial_number)  # Note how we access MODEL here! See notes on class instance accessibility!
+        super().analyze_sample(sample)  # Call to the superclass implementation
+        print("Analyzed ", len(sample.dna_sequence), "bases")
+Note
+
+The function super() gives access to the underlying instance of the superclass for an object. There is a LOT more to be said about this topic, but it quickly becomes super()-complicated. A good writeup can be found on the Real Python Blog.
+
+The DNA Master 2000 also comes specially sealed, so it does not get dirty during deliveriy and is ready to use. We can model this by overriding the __init__(…)-method.
+
+class DnaMaster2000(DnaSequencer):
+    MODEL = …
+
+    def __init__(self, serial_number):
+        super().__init__(
+            serial_number=serial_number,
+            is_clean=True
+        )
+
+    def analyze_sample(self, sample):
+        …  # as before
+Let’s give this a try:
+
+from sample import Sample
+import location
+from dna_sequencer import DnaMaster2000
+
+my_sample = Sample(identifier="0123", collector="Darwin", found_at=location.NAURU)
+my_sequencer = DnaMaster2000(serial_number="R2D2-C3PO")
+
+my_sequencer.analyze_sample(my_sample)
+
+print(my_sample)
+print(my_sample.dna_sequence)

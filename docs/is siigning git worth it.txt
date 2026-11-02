@@ -1,0 +1,113 @@
+Is Signing Git Commits Worth it?
+Every commit in a Git repository has an author, but this information is not verified by Git. This is how to configure your name and email address when start working with Git:
+
+
+$ git config --global user.name "John Doe"
+$ git config --global user.email "john.doe@hifis.net"
+It is easy to create commits that appear to be authored by someone else. The principle can be compared to the falsification of email senders. In an unsigned email you cannot be totally sure, that it was sent by the person specified in the email header. Luckily, thanks to the DFN PKI infrastructure most Helmholtz centers already offer their employees the option to request a personal certificate. Starting with Git version 2.19 the signing and verification support was extended to include support for S/MIME using X.509 certificates. The mechanism that might already be known to you from emails can now be used for Git commits as well. Signing Git commits is another valuable use case for these personal certificates. If you do not have one yet, talk to the IT department of your institution to get information about the application process in your research center.
+
+How to Configure S/MIME Signing?
+Before being able to use S/MIME for Git commits or tags in your own work, some configuration is necessary. Luckily, the configuration only needs to be done once per device and user account. Parts of the setup procedure depend on the operating system of your choice. Please choose the right section that applies to you.
+
+Before we continue, please make sure that your Git version is 2.19.0 or later.
+
+
+$ git --version
+git version 2.26.0
+In case the installed version is older than 2.19.0 please follow the instructions on the Git website. The installation of Git is beyond the scope of this tutorial.
+
+Linux
+On Linux we will use the tool gpgsm to enable S/MIME signing of Git commits.
+
+The tool can usually be installed via the package manager of your distribution.
+Debian based:
+
+$ sudo apt-get install gpgsm
+CentOS/RedHat Linux:
+
+
+$ yum install gnupg2-smime
+Fedora:
+
+
+$ dnf install gnupg2-smime
+Import your private key and certificate:
+
+  $ gpgsm --import <filename>.pfx/p12
+Make sure that your key was imported properly:
+
+  $ gpgsm --list-keys
+        ID: 0x12345678
+    Issuer: /CN=DFN-Verein Global Issuing CA/OU=DFN-PKI/O=Verein zur Foerderung eines Deutschen Forschungsnetzes e. V./C=DE
+   Subject: /CN=Huste, Tobias/O=Helmholtz-Zentrum Dresden - Rossendorf e. V./L=Dresden/ST=Sachsen/C=DE
+       aka: t.huste@hzdr.de
+  validity: 2019-10-07 10:47:08 through 2022-10-06 10:47:08
+  key type: 2048 bit RSA
+ key usage: digitalSignature nonRepudiation keyEncipherment
+  ext key usage: clientAuth (suggested), emailProtection (suggested)
+It might be necessary to also include the DFN chain. Therefore, execute these commands:
+
+1
+  $ curl https://pki.pca.dfn.de/dfn-ca-global-g2/pub/cacert/chain.txt | gpgsm --import
+ Note: Above command is specific for certificates issued by DFN-Verein Global Issuing CA.
+
+Configure Git to use your commit for signing.
+
+  $ export SIGNINGKEY=$( gpgsm --list-secret-keys | egrep '(key usage|ID)' | grep -B 1 digitalSignature | awk '/ID/ {print $2}' )
+  $ git config --global user.signingkey $SIGNINGKEY
+  $ git config --global gpg.format x509
+Windows and MacOS
+Install smimesign (MacOS) or smimesign (Windows) by following the instructions on the given page.
+Configure Git to use smimesign for all repositories:
+
+$ git config --global gpg.x509.program smimesign
+$ git config --global gpg.format x509
+If you have already installed your private key and certificate to your system, no further configuration is required for smimesign. Please configure Git to use the same email address as supplied in your personal certificate.
+Find you Git email address:
+
+
+$ git config --get user.email
+john.doe@hifis.net
+List available signing identities:
+
+
+$ smimesign --list-keys
+Sign your Git tags
+When creating a signed Git tag, all you need to do is to replace the -a flag by -s.
+
+
+$ git tag -s v1.0 -m 'My first signed tag'
+To verify a signed tag, use git tag -v <tag-name>.
+
+
+$ git tag -v v1.0
+object ac4d8f716fcdaec5617a49caa850cfafec7e947c
+type commit
+tag v1.0
+tagger Tobias Huste <t.huste@hzdr.de> 1586416623 +0200
+
+My first signed tag
+gpgsm: Signature made 2020-04-09 07:17:03 using certificate ID 0xBBD386A3
+gpgsm: Good signature from "/CN=Huste, Tobias/O=Helmholtz-Zentrum Dresden - Rossendorf e. V./L=Dresden/ST=Sachsen/C=DE"
+gpgsm:                 aka "t.huste@hzdr.de"
+Sign your Git commits
+Once you finished above configuration steps for the operating system of your choice, you can start signing your Git commits. All you need to do is to add the -S flag to your git commit command:
+
+
+$ git commit -S -m "Create my first signed commit"
+To see and verify the signatures, there is a --show-signature option to git log:
+
+
+$ git log --show-signature -1
+commit ac4d8f716fcdaec5617a49caa850cfafec7e947c (HEAD -> 138-blog-post-s-mime-signing-of-git-commits)
+gpgsm: Signature made 2020-04-09 06:26:53 using certificate ID 0xBBD386A3
+gpgsm: Good signature from "/CN=Huste, Tobias/O=Helmholtz-Zentrum Dresden - Rossendorf e. V./L=Dresden/ST=Sachsen/C=DE"
+gpgsm:                 aka "t.huste@hzdr.de"
+Author: Tobias Huste <t.huste@hzdr.de>
+Date:   Thu Mar 5 09:01:33 2020 +0100
+
+    WIP: Draft S/MIME blog post
+Signing all commits by default can be enabled by setting the configuration variable commit.gpgsign to true:
+
+
+$ git config --global commit.gpgsign true

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#F8FAFC]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HIFIS Chat | Research Software Engineering</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        hifisNavy: '#051C2C',
+                        hifisBlue: '#005AA0',
+                        hifisTeal: '#008E96',
+                        hifisLightTeal: '#E6F4F5',
+                        hifisBg: '#F8FAFC',
+                        hifisBorder: '#E2E8F0',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['Fira Code', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Marked.js for Markdown Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Highlight.js for Code Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 9999px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+
+        /* Typography and prose styling */
+        .prose pre {
+            background-color: #0B1726;
+            border: 1px solid #1E293B;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            color: #F1F5F9;
+            overflow-x: auto;
+            margin-top: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .prose code {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .prose p {
+            margin-bottom: 0.75rem;
+            line-height: 1.65;
+        }
+
+        .prose p:last-child {
+            margin-bottom: 0;
+        }
+
+        .prose ul {
+            list-style-type: disc;
+            margin-left: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .prose ol {
+            list-style-type: decimal;
+            margin-left: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .prose h3 {
+            font-weight: 700;
+            color: #051C2C;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        /* Smooth accordion animation */
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased selection:bg-hifisTeal selection:text-white">
+
+    <!-- Minimal Header -->
+    <header class="bg-hifisNavy text-white border-b border-hifisTeal/40 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-[850px] mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div
+                    class="w-8 h-8 rounded-md bg-hifisTeal flex items-center justify-center font-mono font-bold text-sm text-white shadow-sm">
+                    &lt;/&gt;
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-base font-bold tracking-tight text-white">HIFIS Chat</h1>
+                        <span
+                            class="text-[10px] bg-hifisTeal/20 text-hifisTeal px-2 py-0.5 rounded-full border border-hifisTeal/30 font-semibold">
+                            Research Software Engineering
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <!-- Status Pill -->
+                <div
+                    class="hidden sm:flex items-center space-x-2 text-xs text-slate-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="text-[11px]">Git, Python, Docker Docs</span>
+                </div>
+
+                <!-- Subtle API Key Toggle -->
+                <button id="openKeyModalBtn"
+                    class="text-xs text-slate-300 hover:text-white hover:bg-white/10 px-2.5 py-1 rounded-lg transition border border-slate-700/60 flex items-center space-x-1.5"
+                    title="Optional Groq API Key">
+                    <i class="fa-solid fa-key text-[10px] text-hifisTeal"></i>
+                    <span class="text-[11px] font-medium" id="keyBtnLabel">API Key</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Centered Chat Container (Max Width 800px) -->
+    <main class="flex-1 max-w-[800px] w-full mx-auto flex flex-col h-[calc(100vh-57px)] relative px-3 sm:px-4">
+
+        <!-- Scrollable Conversation Feed -->
+        <div id="chatFeed" class="flex-1 overflow-y-auto py-6 space-y-6">
+
+            <!-- Welcome Hero Banner -->
+            <div id="welcomeBanner" class="bg-white rounded-2xl border border-hifisBorder p-6 shadow-sm space-y-4">
+                <div class="flex items-start space-x-4">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-hifisLightTeal text-hifisTeal flex items-center justify-center text-xl shrink-0 font-bold">
+                        <i class="fa-solid fa-cubes"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-hifisNavy">Helmholtz RAG Assistant</h2>
+                        <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                            Ask technical questions about Helmholtz Research Software Engineering guides, including Git
+                            commit signing with S/MIME, Python OOP principles, and Docker containerization.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Quick Starter Chips inside Welcome Card -->
+                <div class="pt-3 border-t border-slate-100">
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Suggested Queries
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <button onclick="submitQuery('How do I sign Git commits with S/MIME?')"
+                            class="text-left bg-slate-50 hover:bg-hifisLightTeal border border-slate-200 hover:border-hifisTeal/50 px-3 py-2 rounded-lg text-xs text-slate-700 hover:text-hifisNavy transition flex items-center justify-between group">
+                            <span><i class="fa-brands fa-git-alt text-hifisTeal mr-1.5"></i> How do I sign Git commits
+                                with S/MIME?</span>
+                            <i
+                                class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-hifisTeal transition-colors ml-2"></i>
+                        </button>
+                        <button onclick="submitQuery('What is a class instance in Python?')"
+                            class="text-left bg-slate-50 hover:bg-hifisLightTeal border border-slate-200 hover:border-hifisTeal/50 px-3 py-2 rounded-lg text-xs text-slate-700 hover:text-hifisNavy transition flex items-center justify-between group">
+                            <span><i class="fa-brands fa-python text-emerald-600 mr-1.5"></i> What is a class instance
+                                in Python?</span>
+                            <i
+                                class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-hifisTeal transition-colors ml-2"></i>
+                        </button>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mt-2">
+                        <button onclick="submitQuery('How to run Docker interactively?')"
+                            class="text-left bg-slate-50 hover:bg-hifisLightTeal border border-slate-200 hover:border-hifisTeal/50 px-3 py-2 rounded-lg text-xs text-slate-700 hover:text-hifisNavy transition flex items-center justify-between group w-full">
+                            <span><i class="fa-brands fa-docker text-sky-600 mr-1.5"></i> How to run Docker
+                                interactively?</span>
+                            <i
+                                class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-hifisTeal transition-colors ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages append dynamically here -->
+        </div>
+
+        <!-- Sticky Bottom Input Section -->
+        <div class="pb-4 pt-2 bg-[#F8FAFC]">
+
+            <!-- Quick Chips Strip (Visible when chat is active) -->
+            <div id="quickChipsBar"
+                class="hidden flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none text-xs">
+                <span class="text-[10px] text-slate-400 font-bold shrink-0 uppercase">Quick:</span>
+                <button onclick="submitQuery('How do I sign Git commits with S/MIME?')"
+                    class="bg-white hover:bg-hifisLightTeal border border-slate-200 px-2.5 py-1 rounded-full text-slate-600 hover:text-hifisNavy shrink-0 transition text-[11px]">Git
+                    S/MIME Signing</button>
+                <button onclick="submitQuery('What is a class instance in Python?')"
+                    class="bg-white hover:bg-hifisLightTeal border border-slate-200 px-2.5 py-1 rounded-full text-slate-600 hover:text-hifisNavy shrink-0 transition text-[11px]">Python
+                    Instance</button>
+                <button onclick="submitQuery('How to run Docker interactively?')"
+                    class="bg-white hover:bg-hifisLightTeal border border-slate-200 px-2.5 py-1 rounded-full text-slate-600 hover:text-hifisNavy shrink-0 transition text-[11px]">Docker
+                    Interactive Mode</button>
+            </div>
+
+            <form id="chatForm"
+                class="relative bg-white border border-hifisBorder rounded-2xl shadow-sm focus-within:border-hifisTeal focus-within:ring-2 focus-within:ring-hifisTeal/20 transition p-2">
+                <textarea id="userInput" rows="1" placeholder="Ask a technical question..."
+                    class="w-full bg-transparent border-0 focus:ring-0 focus:outline-none px-3 py-2 text-sm resize-none text-slate-800 placeholder-slate-400 max-h-32"
+                    required></textarea>
+
+                <div class="flex items-center justify-between pt-1 px-2 border-t border-slate-100">
+                    <div class="flex items-center space-x-2 text-[11px] text-slate-400 font-mono">
+                        <i class="fa-solid fa-microchip text-hifisTeal text-[10px]"></i>
+                        <span>top_k=2 &bull; openai/gpt-oss-120b</span>
+                    </div>
+                    <button type="submit" id="sendBtn"
+                        class="bg-hifisNavy hover:bg-hifisBlue text-white w-8 h-8 rounded-xl flex items-center justify-center transition shadow-sm shrink-0">
+                        <i class="fa-solid fa-arrow-up text-xs"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Optional API Key Modal -->
+    <div id="keyModal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-hifisBorder rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-key text-hifisTeal"></i>
+                    <h3 class="font-bold text-sm text-hifisNavy">Groq API Key (Optional)</h3>
+                </div>
+                <button id="closeKeyModalBtn" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Provide a free Groq API key to stream live answers from <code
+                    class="font-mono text-hifisTeal">openai/gpt-oss-120b</code>. If left blank, the app operates using
+                an offline local semantic simulation.
+            </p>
+            <input type="password" id="apiKeyInput" placeholder="gsk_..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-hifisTeal">
+            <div class="flex justify-end space-x-2 pt-2">
+                <button id="saveKeyBtn"
+                    class="bg-hifisNavy hover:bg-hifisBlue text-white px-4 py-2 rounded-xl text-xs font-semibold transition">
+                    Save Key
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Knowledge Base Content (Mirroring the 3 local documents)
+        const DOCS_KNOWLEDGE = [
+            {
+                filepath: "docs/is signing git worth it.txt",
+                title: "Git S/MIME Commit Signing",
+                keywords: ["git", "smime", "signing", "linux", "gpgsm", "x509", "certificate", "commit", "dfn"],
+                snippet: `On Linux we will use the tool gpgsm to enable S/MIME signing of Git commits.
+Install package: $ sudo apt-get install gpgsm (Debian/Ubuntu) or $ yum install gnupg2-smime (CentOS/RedHat).
+Import your key: $ gpgsm --import <filename>.pfx/p12
+List keys: $ gpgsm --list-keys
+Configure Git signing key and format:
+$ export SIGNINGKEY=$( gpgsm --list-secret-keys | egrep '(key usage|ID)' | grep -B 1 digitalSignature | awk '/ID/ {print $2}' )
+$ git config --global user.signingkey $SIGNINGKEY
+$ git config --global gpg.format x509
+Sign commits: $ git commit -S -m "Create my first signed commit"`
+            },
+            {
+                filepath: "docs/object oriented proramming.txt",
+                title: "Python Object-Oriented Programming",
+                keywords: ["python", "object", "instance", "class", "instantiation", "constructor", "__init__", "attributes", "self"],
+                snippet: `An object that is of a certain class is called an instance of that class. Instantiation thus is the process of creating a new object from a class. All objects of a certain class will have the same attributes, but may have different values.
+
+Example construction in Python:
+class Sample:
+    def __init__(self, identifier, collector):
+        self.identifier = identifier
+        self.collector = collector
+
+# Create a new instance:
+my_sample = Sample("0123", "Darwin")
+my_sample.collector = "Irwin"`
+            },
+            {
+                filepath: "docs/what is docker.txt",
+                title: "Docker Containerization Basics",
+                keywords: ["docker", "container", "interactive", "run", "-it", "repl", "terminal", "bash", "exec"],
+                snippet: `By default, when Docker runs a container, it just prints the output of that container – it doesn’t send any user input into that container. However, the default Python command is a REPL – it requires terminal input to work. To allow us to send terminal input in and out, we use the -it flags:
+
+$ docker run -it python:3.8.5
+
+You can also run commands inside an existing running container using docker exec:
+$ docker exec -it my-python-container bash`
+            }
+        ];
+
+        // Hardcoded RAG Parameters
+        const RAG_CONFIG = {
+            model: "openai/gpt-oss-120b",
+            top_k: 2
+        };
+
+        // DOM Elements
+        const chatFeed = document.getElementById('chatFeed');
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const welcomeBanner = document.getElementById('welcomeBanner');
+        const quickChipsBar = document.getElementById('quickChipsBar');
+        const keyModal = document.getElementById('keyModal');
+        const openKeyModalBtn = document.getElementById('openKeyModalBtn');
+        const closeKeyModalBtn = document.getElementById('closeKeyModalBtn');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveKeyBtn = document.getElementById('saveKeyBtn');
+        const keyBtnLabel = document.getElementById('keyBtnLabel');
+
+        // Initialize state
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('hifis_groq_key');
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+                keyBtnLabel.textContent = "Key Set";
+            }
+
+            marked.setOptions({
+                highlight: (code, lang) => {
+                    if (lang && hljs.getLanguage(lang)) {
+                        return hljs.highlight(code, { language: lang }).value;
+                    }
+                    return hljs.highlightAuto(code).value;
+                },
+                breaks: true
+            });
+        });
+
+        // Key Modal Handlers
+        openKeyModalBtn.addEventListener('click', () => keyModal.classList.remove('hidden'));
+        closeKeyModalBtn.addEventListener('click', () => keyModal.classList.add('hidden'));
+        saveKeyBtn.addEventListener('click', () => {
+            const val = apiKeyInput.value.trim();
+            if (val) {
+                localStorage.setItem('hifis_groq_key', val);
+                keyBtnLabel.textContent = "Key Set";
+            } else {
+                localStorage.removeItem('hifis_groq_key');
+                keyBtnLabel.textContent = "API Key";
+            }
+            keyModal.classList.add('hidden');
+        });
+
+        // Submit query helper
+        function submitQuery(q) {
+            userInput.value = q;
+            chatForm.dispatchEvent(new Event('submit'));
+        }
+
+        // Auto-expand input height
+        userInput.addEventListener('input', () => {
+            userInput.style.height = 'auto';
+            userInput.style.height = userInput.scrollHeight + 'px';
+        });
+
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Local RAG Context Retrieval (top_k=2)
+        function retrieveTopKDocs(query) {
+            const q = query.toLowerCase();
+            const scored = DOCS_KNOWLEDGE.map(doc => {
+                let score = 0;
+                doc.keywords.forEach(kw => {
+                    if (q.includes(kw)) score += 2;
+                });
+                return { ...doc, score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+
+            // Return top 2 documents
+            return scored.slice(0, RAG_CONFIG.top_k);
+        }
+
+        // Form Submit Handler
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = userInput.value.trim();
+            if (!query) return;
+
+            // UI Adjustments
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            if (welcomeBanner) welcomeBanner.classList.add('hidden');
+            quickChipsBar.classList.remove('hidden');
+
+            // Render User Bubble
+            appendUserBubble(query);
+
+            // Retrieve Context Chunks (top_k = 2)
+            const retrievedDocs = retrieveTopKDocs(query);
+
+            // Append Assistant Placeholder
+            const assistantBubble = appendAssistantPlaceholder();
+
+            const apiKey = localStorage.getItem('hifis_groq_key');
+
+            if (apiKey) {
+                try {
+                    const answer = await callGroqAPI(query, retrievedDocs, apiKey);
+                    renderAssistantAnswer(assistantBubble, answer, retrievedDocs);
+                } catch (err) {
+                    console.warn("API Call Failed, using local fallback:", err);
+                    const fallback = generateSimulatedAnswer(query, retrievedDocs);
+                    renderAssistantAnswer(assistantBubble, fallback, retrievedDocs);
+                }
+            } else {
+                // Local Simulation delay
+                await new Promise(r => setTimeout(r, 450));
+                const answer = generateSimulatedAnswer(query, retrievedDocs);
+                renderAssistantAnswer(assistantBubble, answer, retrievedDocs);
+            }
+        });
+
+        // UI Append User Message
+        function appendUserBubble(text) {
+            const div = document.createElement('div');
+            div.className = 'flex justify-end';
+            div.innerHTML = `
+                <div class="bg-hifisNavy text-white px-4 py-3 rounded-2xl rounded-tr-xs max-w-[85%] text-sm leading-relaxed shadow-xs">
+                    ${escapeHtml(text)}
+                </div>
+            `;
+            chatFeed.appendChild(div);
+            scrollToBottom();
+        }
+
+        // UI Append Assistant Placeholder
+        function appendAssistantPlaceholder() {
+            const div = document.createElement('div');
+            div.className = 'flex items-start space-x-3';
+            div.innerHTML = `
+                <div class="w-7 h-7 rounded-lg bg-hifisTeal text-white flex items-center justify-center text-xs shrink-0 font-bold shadow-xs">
+                    H
+                </div>
+                <div class="bg-white border border-hifisBorder p-4 sm:p-5 rounded-2xl rounded-tl-xs max-w-[90%] w-full shadow-xs space-y-3">
+                    <div class="loading-spinner flex items-center space-x-2 text-slate-400 text-xs">
+                        <i class="fa-solid fa-spinner animate-spin text-hifisTeal"></i>
+                        <span>Searching local vectors & generating response...</span>
+                    </div>
+                    <div class="answer-body hidden prose max-w-none text-slate-800 text-sm"></div>
+                    <div class="citations-body hidden pt-3 border-t border-slate-100"></div>
+                </div>
+            `;
+            chatFeed.appendChild(div);
+            scrollToBottom();
+            return div;
+        }
+
+        // Render Final Answer & Citation Accordions
+        function renderAssistantAnswer(bubbleEl, markdownText, retrievedDocs) {
+            const spinner = bubbleEl.querySelector('.loading-spinner');
+            const answerBody = bubbleEl.querySelector('.answer-body');
+            const citationsBody = bubbleEl.querySelector('.citations-body');
+
+            spinner.classList.add('hidden');
+            answerBody.classList.remove('hidden');
+            citationsBody.classList.remove('hidden');
+
+            answerBody.innerHTML = marked.parse(markdownText);
+
+            // Build Citation Accordion
+            let citationsHTML = `
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                    <i class="fa-solid fa-quote-left text-hifisTeal mr-1.5"></i> Context Sources Used (top_k=${RAG_CONFIG.top_k})
+                </div>
+                <div class="space-y-1.5">
+            `;
+
+            retrievedDocs.forEach(doc => {
+                citationsHTML += `
+                    <details class="group bg-slate-50 border border-slate-200 rounded-lg text-xs overflow-hidden">
+                        <summary class="px-3 py-2 cursor-pointer font-mono font-medium text-slate-700 flex items-center justify-between hover:bg-hifisLightTeal/50 transition">
+                            <span class="flex items-center space-x-1.5 truncate">
+                                <i class="fa-solid fa-file-code text-hifisTeal text-[11px]"></i>
+                                <span class="truncate">${doc.filepath}</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-open:rotate-180 transition-transform ml-2"></i>
+                        </summary>
+                        <div class="px-3 py-2 bg-white border-t border-slate-200 font-mono text-[11px] text-slate-600 whitespace-pre-wrap leading-relaxed">
+                            ${escapeHtml(doc.snippet)}
+                        </div>
+                    </details>
+                `;
+            });
+
+            citationsHTML += `</div>`;
+            citationsBody.innerHTML = citationsHTML;
+
+            scrollToBottom();
+        }
+
+        // Groq API Fetch Call
+        async function callGroqAPI(query, docs, apiKey) {
+            const contextStr = docs.map(d => `[Source: ${d.filepath}]\n${d.snippet}`).join('\n\n');
+
+            const prompt = `You are a technical research software engineering assistant for HIFIS.
+Answer the user's question concisely using ONLY the provided context below.
+If the context does not contain enough information, state: "I cannot find this information in the technical documentation."
+
+Context:
+${contextStr}
+
+Question: ${query}`;
+
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: RAG_CONFIG.model,
+                    messages: [{ role: "user", content: prompt }],
+                    temperature: 0.0
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error?.message || "Groq API error");
+            }
+
+            const data = await res.json();
+            return data.choices[0].message.content;
+        }
+
+        // Local Semantic Answer Generator (Fallback)
+        function generateSimulatedAnswer(query, docs) {
+            const q = query.toLowerCase();
+
+            if (q.includes("git") || q.includes("smime") || q.includes("sign")) {
+                return `To configure **S/MIME commit signing on Linux**, follow these steps from the documentation:
+
+### 1. Install \`gpgsm\`
+\`\`\`bash
+# Debian / Ubuntu:
+sudo apt-get install gpgsm
+
+# CentOS / RedHat:
+yum install gnupg2-smime
+\`\`\`
+
+### 2. Import & Configure Certificate
+\`\`\`bash
+# Import PFX/P12 key
+gpgsm --import <filename>.pfx
+
+# Configure Git
+export SIGNINGKEY=$( gpgsm --list-secret-keys | egrep '(key usage|ID)' | grep -B 1 digitalSignature | awk '/ID/ {print $2}' )
+git config --global user.signingkey $SIGNINGKEY
+git config --global gpg.format x509
+\`\`\`
+
+### 3. Sign Commits
+Use the \`-S\` flag when committing:
+\`\`\`bash
+git commit -S -m "Create signed commit"
+\`\`\``;
+            }
+
+            if (q.includes("python") || q.includes("instance") || q.includes("class")) {
+                return `In Python Object-Oriented Programming, an **instance** is an individual object created from a class blueprint.
+
+- **Class:** The abstract blueprint (e.g., \`class Sample:\`).
+- **Instance:** An object created from that class (e.g., \`my_sample = Sample()\`).
+- **Constructor (\`__init__\`):** Initializes instance-specific attributes.
+
+### Example:
+\`\`\`python
+class Sample:
+    def __init__(self, identifier, collector):
+        self.identifier = identifier
+        self.collector = collector
+
+# Instantiating a new object
+my_sample = Sample("0123", "Darwin")
+my_sample.collector = "Irwin"
+\`\`\``;
+            }
+
+            if (q.includes("docker") || q.includes("interactive") || q.includes("container")) {
+                return `To run a Docker container in **interactive mode**, use the \`-it\` flag:
+
+\`\`\`bash
+docker run -it python:3.8.5
+\`\`\`
+
+### Key Flags:
+- \`-i\` (\`--interactive\`): Keeps \`STDIN\` open for input.
+- \`-t\` (\`--tty\`): Allocates a terminal prompt.
+
+To run an interactive shell in an **already running container**, use \`docker exec\`:
+\`\`\`bash
+docker exec -it my-python-container bash
+\`\`\``;
+            }
+
+            return `Based on the retrieved context:
+
+${docs[0].snippet}`;
+        }
+
+        // Helpers
+        function scrollToBottom() {
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+
+</html>
